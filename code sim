@@ -1,0 +1,96 @@
+#include <Encoder.h>
+#include <Joystick.h>
+
+// **Broches pour les boutons**
+#define BUTTON_1 2
+#define BUTTON_2 3
+#define BUTTON_3 4
+#define BUTTON_4 5
+#define BUTTON_5 6
+#define BUTTON_6 7
+
+// **Broches pour l'encodeur rotatif**
+#define ENCODER_PIN_A 8
+#define ENCODER_PIN_B 9
+Encoder myEnc(ENCODER_PIN_A, ENCODER_PIN_B);
+
+// **Broches pour les potentiomètres**
+#define POT_1 A0   // Pédale 1
+#define POT_2 A1   // Pédale 2
+#define POT_3 A2   // Pédale 3
+
+// Initialisation du joystick (axe X et Y)
+Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
+                   0, 0,                   // Pas de boutons
+                   true, false, false);    // Axe X activé, pas d'autres axes
+
+// Variables pour la gestion de l'encodeur et des potentiomètres
+long lastEncoderPosition = 0;
+int lastPot1 = 0, lastPot2 = 0, lastPot3 = 0;
+bool lastButtonState[6] = {false, false, false, false, false, false};
+
+void setup() {
+  // Initialisation du joystick HID
+  Joystick.begin();
+
+  // Configurer les broches des boutons en entrée avec pull-up
+  pinMode(BUTTON_1, INPUT_PULLUP);
+  pinMode(BUTTON_2, INPUT_PULLUP);
+  pinMode(BUTTON_3, INPUT_PULLUP);
+  pinMode(BUTTON_4, INPUT_PULLUP);
+  pinMode(BUTTON_5, INPUT_PULLUP);
+  pinMode(BUTTON_6, INPUT_PULLUP);
+}
+
+void loop() {
+  // Vérifier l'état des boutons
+  for (int i = 0; i < 6; i++) {
+    int buttonPin = BUTTON_1 + i; // Adapte dynamiquement la broche
+    bool currentState = !digitalRead(buttonPin); // Inversé car pull-up
+
+    if (currentState != lastButtonState[i]) {
+      Serial.print("BTN");
+      Serial.print(i + 1);
+      Serial.print(":");
+      Serial.println(currentState ? "1" : "0");
+      lastButtonState[i] = currentState;
+
+      // Simuler l'appui sur un bouton du joystick
+      if (currentState) {
+        Joystick.pressButton(i);
+      } else {
+        Joystick.releaseButton(i);
+      }
+    }
+  }
+
+  // **Lire la position de l'encodeur rotatif**
+  long encoderPosition = myEnc.read();
+  if (encoderPosition != lastEncoderPosition) {
+    // Mapper la position de l'encodeur (-1000 à 1000) à l'axe X (-127 à 127)
+    int joystickX = map(encoderPosition, -1000, 1000, -127, 127);
+    Joystick.setXAxis(joystickX);
+
+    // Sauvegarder la dernière position
+    lastEncoderPosition = encoderPosition;
+  }
+
+  // **Lire les valeurs des potentiomètres et les mapper**
+  int pot1 = analogRead(POT_1);
+  int pot2 = analogRead(POT_2);
+  int pot3 = analogRead(POT_3);
+
+  // Mapper les potentiomètres à l'axe Y et les autres axes
+  int pedal1 = map(pot1, 0, 1023, 0, 255);
+  int pedal2 = map(pot2, 0, 1023, 0, 255);
+  int pedal3 = map(pot3, 0, 1023, 0, 255);
+
+  // Simuler des pédales sur l'axe Y (ou d'autres axes si nécessaire)
+  Joystick.setYAxis(pedal1);  // Exemple de la pédale 1 sur l'axe Y
+
+  // Simuler un autre comportement avec les potentiomètres si nécessaire
+  // Joystick.setZAxis(pedal2);  // Autre pédale sur un autre axe
+  // Joystick.setRzAxis(pedal3); // Et encore une autre pédale
+
+  delay(10); // Petit délai pour éviter une surcharge
+}
